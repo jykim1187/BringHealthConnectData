@@ -33,8 +33,9 @@ class MainActivity : ComponentActivity() {
 
     // stepCountData를 클래스의 멤버 변수로 선언
     private var stepCountData by mutableStateOf<List<Int>>(emptyList())
-    //칼로리 소모량
-    private var dailyCaloriesBurnedData by mutableStateOf(0.0)
+    private var dailyCaloriesBurnedData by mutableStateOf(0.0) //총 소모칼로리
+    private var distanceWalkedData by mutableStateOf(0.0) //오늘 걸은 거리
+    private var activeCaloriesBurnedData by mutableStateOf(0.0) //활동으로 인한 소모칼로리
 
 
     private val permissionLauncher =
@@ -43,12 +44,13 @@ class MainActivity : ComponentActivity() {
         ) { granted: Set<String> -> //granted되면 권한리스트에 들어감
             Log.d("HEALTH_SYNC", "권한 요청 결과: $granted")
             if (granted.containsAll(healthConnectManager.permissions)) {
-                fetchAndSend { stepData,dailyCaloriesBurned  ->
+                fetchAndSend { stepData,dailyCaloriesBurned,distanceWalked,activeCaloriesBurned  ->
                     stepCountData = stepData
                     dailyCaloriesBurnedData = dailyCaloriesBurned
+                    distanceWalkedData = distanceWalked
+                    activeCaloriesBurnedData = activeCaloriesBurned
                     // 여기서 stepData와 heartRateData를 사용할 수 있게 됩니다.
                     // UI에 데이터를 업데이트하는 작업을 여기에 추가하면 됩니다.
-                    Log.d("HEALTH_SYNC", "걸음수 데이터: $stepData")
                 }
             } else {
                 Log.e("HEALTH_SYNC", "권한 요청 실패")
@@ -81,9 +83,12 @@ class MainActivity : ComponentActivity() {
 
 
                 // 걸음수만 표시하는 텍스트 추가
-                Text(text = "걸음수 데이터: ${stepCountData.joinToString(", ")}")
+                Text(text = "걸음수 데이터: ${stepCountData.joinToString(", ")} 보")
                 // 칼로리 소모량만 표시하는 텍스트 추가
                 Text(text = "칼로리 소모량: ${"%.2f".format(dailyCaloriesBurnedData)} kcal")
+                // 거리 출력(미터기준)
+                Text(text = "오늘 걸은 거리: ${"%.2f".format(distanceWalkedData)} m")
+                Text(text = "활동 칼로리: ${"%.2f".format(activeCaloriesBurnedData)} kcal")
                 Button(onClick = {
                     // 버튼 클릭 시 fetchAndSend() 실행
                     permissionLauncher.launch(healthConnectManager.permissions)
@@ -95,7 +100,7 @@ class MainActivity : ComponentActivity() {
     }
 
 
-    private fun fetchAndSend(onDataFetched: (List<Int>, Double) -> Unit) { //서버로 데이터 전송하는 함수
+    private fun fetchAndSend(onDataFetched: (List<Int>, Double, Double, Double) -> Unit) { //서버로 데이터 전송하는 함수
 //        onDataFetched: (List<Int>, List<HeartRateData>) -> Unit는 함수 타입선언부분 List<Int>, List<HeartRateData>두 가지 탑을 인자로 받는 함수타입선언. Unit은 반환값이 없다는 의미
         Log.d("HEALTH_SYNC", "fetchAndSend 실행됨")
         lifecycleScope.launch {
@@ -107,8 +112,6 @@ class MainActivity : ComponentActivity() {
                 val caloriesBurnedRecords = healthConnectManager.readCaloriesBurned()
                 val caloriesBurnedData = caloriesBurnedRecords.sumOf { it.energy.inCalories }
                 val dailyCaloriesBurned = caloriesBurnedData / 24  // 24시간 기준으로 나누기
-
-
 //                심박수데이터읽기
                 val heartRateRecords =healthConnectManager.readHeartRates()
                 val heartRateData = heartRateRecords.map{
@@ -118,11 +121,20 @@ class MainActivity : ComponentActivity() {
                         time = sample?.time.toString() //bpm:xx.x ,time: 2025-03-39 몇시 이런식으로 json형식
                     )
                 }
+//               오늘 걸은 거리
+                val distanceRecords = healthConnectManager.readDistanceWalked()
+                val totalDistance = distanceRecords.sumOf { it.distance.inMeters }
+//              활동으로 소모한 칼로리
+                val activeCalorieRecords = healthConnectManager.readActiveCaloriesBurned()
+                val activeCaloriesBurned = activeCalorieRecords.sumOf { it.energy.inCalories }
+
                 Log.d("HEALTH_SYNC", "걸음수 데이터: ${stepData.joinToString(", ")}")
                 Log.d("HEALTH_SYNC", "심박수 데이터: ${heartRateRecords.size}개")
                 Log.d("HEALTH_SYNC", "칼로리 소모량 데이터: $dailyCaloriesBurned")
+                Log.d("HEALTH_SYNC", "걸은 거리: $totalDistance m")
+                Log.d("HEALTH_SYNC", "활동 칼로리: $activeCaloriesBurned")
                 // onDataFetched 호출하면서 데이터를 UI에넘겨줌
-                onDataFetched(stepData,dailyCaloriesBurned)
+                onDataFetched(stepData,dailyCaloriesBurned,totalDistance,activeCaloriesBurned)
 
                 // 서버로 걸음수 데이터 전송
 //                RetrofitClient.apiService.sendStepCounts(stepData) // 걸음수 데이터를 서버로 전송
@@ -133,10 +145,12 @@ class MainActivity : ComponentActivity() {
                 val healthData = HealthData( //아레에서 HealthData 코틀린클래스를 정의함
                                 stepData = stepData,
                                 heartRateData = heartRateData,
-                                caloriesBurnedData = dailyCaloriesBurned
+                                caloriesBurnedData = dailyCaloriesBurned,
+                                distanceWalked = totalDistance,
+                                activeCaloriesBurned = activeCaloriesBurned
                             )
                 // 서버로 전송
-                RetrofitClient.apiService.sendHealthData(healthData)
+//                RetrofitClient.apiService.sendHealthData(healthData)
             } catch (e: Exception) {
                 Log.e("HEALTH_SYNC", "에러 발생", e)
             }
@@ -149,5 +163,7 @@ class MainActivity : ComponentActivity() {
 data class HealthData(
     val stepData: List<Int>,
     val heartRateData: List<HeartRateData>,
-    val caloriesBurnedData: Double
+    val caloriesBurnedData: Double,
+    val distanceWalked: Double,
+    val activeCaloriesBurned: Double
 )

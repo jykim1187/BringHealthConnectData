@@ -7,9 +7,17 @@
 <!--    걸음수 데이터에 접근할 수 있는 권한-->
     <uses-permission android:name="android.permission.health.READ_STEPS" />
     <uses-permission android:name="android.permission.health.WRITE_STEPS" />
-<!--    소모칼로리 데이터에 접근할 수 있는 권한-->
+<!--    전체소모칼로리 데이터에 접근할 수 있는 권한-->
     <uses-permission android:name="android.permission.health.READ_TOTAL_CALORIES_BURNED" />
     <uses-permission android:name="android.permission.health.WRITE_TOTAL_CALORIES_BURNED" />
+    <!--    오늘 걸은 거리 데이터에 접근할 수 있는 권한-->
+    <uses-permission android:name="android.permission.health.READ_DISTANCE" />
+    <uses-permission android:name="android.permission.health.WRITE_DISTANCE" />
+    <!--    전체소모칼로리 데이터에 접근할 수 있는 권한-->
+    <uses-permission android:name="android.permission.health.READ_ACTIVE_CALORIES_BURNED" />
+    <uses-permission android:name="android.permission.health.WRITE_ACTIVE_CALORIES_BURNED" />
+
+
 <!--    나중에 서버통신을 위해 인터넷 권한도 설정(스프링서버로 HTTP통신하기 위함)-->
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
