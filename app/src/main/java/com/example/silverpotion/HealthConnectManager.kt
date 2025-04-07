@@ -8,6 +8,7 @@ import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
 import androidx.health.connect.client.records.DistanceRecord
 import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
+import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import java.time.Instant
@@ -29,6 +30,7 @@ class HealthConnectManager(private val context: Context) {
         HealthPermission.getReadPermission(TotalCaloriesBurnedRecord::class),
         HealthPermission.getReadPermission(DistanceRecord::class),
         HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class),
+        HealthPermission.getReadPermission(SleepSessionRecord::class),
     )
 
 
@@ -89,7 +91,19 @@ class HealthConnectManager(private val context: Context) {
         )
 
         return healthConnectClient.readRecords(request).records
-    }
+    } //금일 활동칼로리를 받아옴
+
+    suspend fun readSleepSessions(): List<SleepSessionRecord> {
+        val now = Instant.now()
+        val todayStart = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant() //오늘 자정 시간 기준
+
+        val request = ReadRecordsRequest(
+            recordType = SleepSessionRecord::class,
+            timeRangeFilter = TimeRangeFilter.between(todayStart, now)
+        )
+
+        return healthConnectClient.readRecords(request).records
+    } //수면 기록을 받아옴
 
 
 
